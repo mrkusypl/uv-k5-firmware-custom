@@ -556,22 +556,55 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 
 static void MAIN_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
 {
-	if (!bKeyHeld && bKeyPressed) { // exit key pressed
+	if (!bKeyHeld && bKeyPressed) // exit key pressed
 		gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
 
-#ifdef ENABLE_DTMF_CALLING
-		if (gDTMF_CallState != DTMF_CALL_STATE_NONE && gCurrentFunction != FUNCTION_TRANSMIT)
-		{	// clear CALL mode being displayed
-			gDTMF_CallState = DTMF_CALL_STATE_NONE;
-			gUpdateDisplay  = true;
-			return;
+	if (bKeyHeld) { // exit key held down (long press)
+		if (bKeyPressed) // long press EXIT key
+		{	
+#ifdef ENABLE_FEAT_F4HWN
+			// Exclude work with list 1, 2, 3 or all list
+			if ((!gDTMF_InputMode)&&(gScanStateDir != SCAN_OFF)&&(FUNCTION_IsRx())) {
+				gMR_ChannelExclude[gTxVfo->CHANNEL_SAVE] = gMR_ChannelExclude[gTxVfo->CHANNEL_SAVE] ? false : true;
+
+				gVfoConfigureMode = VFO_CONFIGURE;
+				gFlagResetVfos    = true;
+				gBeepToPlay       = BEEP_1KHZ_60MS_OPTIONAL;
+
+				lastFoundFrqOrChan = lastFoundFrqOrChanOld;
+
+				CHFRSCANNER_ContinueScanning();
+
+				return;
+			}
+#endif
+			
+			// cancel key input mode (channel/frequency entry)
+			gDTMF_InputMode       = false;
+			gDTMF_InputBox_Index  = 0;
+			memset(gDTMF_String, 0, sizeof(gDTMF_String));
+			gInputBoxIndex        = 0;
+			gRequestDisplayScreen = DISPLAY_MAIN;
+			gBeepToPlay           = BEEP_1KHZ_60MS_OPTIONAL;
 		}
+
+		return;
+	}
+
+#ifdef ENABLE_DTMF_CALLING
+	if (gDTMF_CallState != DTMF_CALL_STATE_NONE && gCurrentFunction != FUNCTION_TRANSMIT)
+	{	// clear CALL mode being displayed
+		gDTMF_CallState = DTMF_CALL_STATE_NONE;
+		gUpdateDisplay  = true;
+		return;
+	}
 #endif
 
 #ifdef ENABLE_FMRADIO
-		if (!gFmRadioMode)
+	if (!gFmRadioMode)
 #endif
-		{
+	{
+		if (!bKeyPressed && !gDTMF_InputMode) {  // exit key released
 			if (gScanStateDir == SCAN_OFF) {
 				if (gInputBoxIndex == 0)
 					return;
@@ -596,24 +629,12 @@ static void MAIN_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
 			gRequestDisplayScreen = DISPLAY_MAIN;
 			return;
 		}
+	}
 
 #ifdef ENABLE_FMRADIO
-		ACTION_FM();
+	ACTION_FM();
 #endif
-		return;
-	}
-
-	if (bKeyHeld && bKeyPressed) { // exit key held down
-		if (gInputBoxIndex > 0 || gDTMF_InputBox_Index > 0 || gDTMF_InputMode)
-		{	// cancel key input mode (channel/frequency entry)
-			gDTMF_InputMode       = false;
-			gDTMF_InputBox_Index  = 0;
-			memset(gDTMF_String, 0, sizeof(gDTMF_String));
-			gInputBoxIndex        = 0;
-			gRequestDisplayScreen = DISPLAY_MAIN;
-			gBeepToPlay           = BEEP_1KHZ_60MS_OPTIONAL;
-		}
-	}
+	return;
 }
 
 static void MAIN_Key_MENU(bool bKeyPressed, bool bKeyHeld)
@@ -623,27 +644,6 @@ static void MAIN_Key_MENU(bool bKeyPressed, bool bKeyHeld)
 
 	if (bKeyHeld) { // menu key held down (long press)
 		if (bKeyPressed) { // long press MENU key
-
-			#ifdef ENABLE_FEAT_F4HWN
-			// Exclude work with list 1, 2, 3 or all list
-			if(gScanStateDir != SCAN_OFF)
-			{
-				if(FUNCTION_IsRx())
-				{
-					gMR_ChannelExclude[gTxVfo->CHANNEL_SAVE] = true;
-
-					gVfoConfigureMode = VFO_CONFIGURE;
-					gFlagResetVfos    = true;
-
-					lastFoundFrqOrChan = lastFoundFrqOrChanOld;
-
-					CHFRSCANNER_ContinueScanning();
-				}
-
-				return;
-			}
-			#endif
-			
 			gWasFKeyPressed = false;
 
 			if (gScreenToDisplay == DISPLAY_MAIN) {
@@ -652,7 +652,6 @@ static void MAIN_Key_MENU(bool bKeyPressed, bool bKeyHeld)
 					gRequestDisplayScreen = DISPLAY_MAIN;
 				}
 
-				gWasFKeyPressed = false;
 				gUpdateStatus   = true;
 
 				ACTION_Handle(KEY_MENU, bKeyPressed, bKeyHeld);
