@@ -497,17 +497,13 @@ void ACTION_RxMode(void)
 {
     static bool cycle = 0;
 
-    switch(cycle) {
-        case 0:
-            gEeprom.DUAL_WATCH = !gEeprom.DUAL_WATCH;
-            cycle = 1;
-            break;
-        case 1:
-            gEeprom.CROSS_BAND_RX_TX = !gEeprom.CROSS_BAND_RX_TX;
-            cycle = 0;
-            break;
+    if (cycle) {
+        gEeprom.CROSS_BAND_RX_TX = !gEeprom.CROSS_BAND_RX_TX;
+    } else {
+        gEeprom.DUAL_WATCH = !gEeprom.DUAL_WATCH;
     }
 
+    cycle = !cycle;
     ACTION_Update();
 }
 
@@ -517,22 +513,18 @@ void ACTION_MainOnly(void)
     static uint8_t dw = 0;
     static uint8_t cb = 0;
 
-    switch(cycle) {
-        case 0:
-            dw = gEeprom.DUAL_WATCH;
-            cb = gEeprom.CROSS_BAND_RX_TX;
+    if (cycle) {
+        gEeprom.DUAL_WATCH = dw;
+        gEeprom.CROSS_BAND_RX_TX = cb;
+    } else {
+        dw = gEeprom.DUAL_WATCH;
+        cb = gEeprom.CROSS_BAND_RX_TX;
 
-            gEeprom.DUAL_WATCH = 0;
-            gEeprom.CROSS_BAND_RX_TX = 0;
-            cycle = 1;
-            break;
-        case 1:
-            gEeprom.DUAL_WATCH = dw;
-            gEeprom.CROSS_BAND_RX_TX = cb;
-            cycle = 0;
-            break;
+        gEeprom.DUAL_WATCH = 0;
+        gEeprom.CROSS_BAND_RX_TX = 0;
     }
 
+    cycle = !cycle;
     ACTION_Update();
 }
 
@@ -544,9 +536,10 @@ void ACTION_Ptt(void)
 void ACTION_Wn(void)
 {
     #ifdef ENABLE_FEAT_F4HWN_NARROWER
-        bool narrower = 0;
         if (FUNCTION_IsRx())
         {
+            bool narrower = 0;
+            
             gRxVfo->CHANNEL_BANDWIDTH = (gRxVfo->CHANNEL_BANDWIDTH == 0) ? 1: 0;
             if(gRxVfo->CHANNEL_BANDWIDTH == BANDWIDTH_NARROW && gSetting_set_nfm == 1)
             {
@@ -559,20 +552,6 @@ void ACTION_Wn(void)
                 BK4819_SetFilterBandwidth(gRxVfo->CHANNEL_BANDWIDTH + narrower, false);
             #endif
         }
-        else
-        {
-            gTxVfo->CHANNEL_BANDWIDTH = (gTxVfo->CHANNEL_BANDWIDTH == 0) ? 1: 0;
-            if(gTxVfo->CHANNEL_BANDWIDTH == BANDWIDTH_NARROW && gSetting_set_nfm == 1)
-            {
-                narrower = 1;
-            }
-
-            #ifdef ENABLE_AM_FIX
-                BK4819_SetFilterBandwidth(gTxVfo->CHANNEL_BANDWIDTH, true);
-            #else
-                BK4819_SetFilterBandwidth(gTxVfo->CHANNEL_BANDWIDTH, false);
-            #endif
-        }
     #else
         if (FUNCTION_IsRx())
         {
@@ -583,16 +562,17 @@ void ACTION_Wn(void)
                 BK4819_SetFilterBandwidth(gRxVfo->CHANNEL_BANDWIDTH, false);
             #endif
         }
+    #endif
         else
         {
             gTxVfo->CHANNEL_BANDWIDTH = (gTxVfo->CHANNEL_BANDWIDTH == 0) ? 1: 0;
+            
             #ifdef ENABLE_AM_FIX
                 BK4819_SetFilterBandwidth(gTxVfo->CHANNEL_BANDWIDTH, true);
             #else
                 BK4819_SetFilterBandwidth(gTxVfo->CHANNEL_BANDWIDTH, false);
             #endif
         }
-    #endif
 }
 
 void ACTION_BackLight(void)
