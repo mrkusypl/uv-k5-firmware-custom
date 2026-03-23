@@ -51,7 +51,6 @@
 static VFO_Info_t gVfoBackup;
 static uint16_t   gScreenChannelBackup = 0;
 static uint16_t   gFreqChannelBackup = 0;
-static bool       gHasVfoBackup = false;
 
 static void toggle_chan_scanlist(void)
 {   // toggle the selected channels scanlist setting
@@ -552,6 +551,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
                 }
 
                 gInputBoxIndex = 0;
+                gHasVfoBackup = false;
 
                 uint8_t Channel = (gInputBox[0] * 10) + gInputBox[1];
                 if (Channel >= 1 && Channel <= ARRAY_SIZE(NoaaFrequencyTable)) {
@@ -613,8 +613,7 @@ static void MAIN_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
     if (bKeyHeld) { // exit key held down
         if (bKeyPressed) {
             if (gInputBoxIndex > 0 || gDTMF_InputBox_Index > 0 || gDTMF_InputMode)
-            {   // cancel key input mode (channel/frequency entry)
-
+            {
                 // Restore full VFO state on long press EXIT
                 if (gHasVfoBackup) {
                     const uint8_t Vfo = gEeprom.TX_VFO;
@@ -634,12 +633,7 @@ static void MAIN_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
                     gHasVfoBackup = false;
                 }
 
-                gDTMF_InputMode       = false;
-                gDTMF_InputBox_Index  = 0;
-                memset(gDTMF_String, 0, sizeof(gDTMF_String));
-                gInputBoxIndex        = 0;
                 gRequestDisplayScreen = DISPLAY_MAIN;
-                gBeepToPlay           = BEEP_1KHZ_60MS_OPTIONAL;
             }
         }
 
@@ -900,8 +894,10 @@ static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
     uint8_t Channel = gEeprom.ScreenChannel[gEeprom.TX_VFO];
 
     if (bKeyHeld || !bKeyPressed) { // key held or released
-        if (gInputBoxIndex > 0)
+        if (gInputBoxIndex > 0) {
             gInputBoxIndex = 0;
+            gHasVfoBackup = false;
+        }
 
         if (!bKeyPressed) {
             if (!bKeyHeld || IS_FREQ_CHANNEL(Channel))

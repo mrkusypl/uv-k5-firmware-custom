@@ -1473,7 +1473,6 @@ void cancelUserInputModes(void)
     if (gDTMF_InputMode || gDTMF_InputBox_Index > 0)
     {
         DTMF_clear_input_box();
-        gBeepToPlay           = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
         gRequestDisplayScreen = DISPLAY_MAIN;
         gUpdateDisplay        = true;
     }
@@ -1515,6 +1514,7 @@ void APP_TimeSlice500ms(void)
             }
 
             cancelUserInputModes();
+            gHasVfoBackup = false;
         }
     }
 
@@ -1883,7 +1883,7 @@ static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 
             // cancel user input
             cancelUserInputModes();
-            gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+            gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
 
             if (gMonitor)
                 ACTION_Monitor(); //turn off the monitor
