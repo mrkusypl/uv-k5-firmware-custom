@@ -332,8 +332,7 @@ static void Key_FUNC(KEY_Code_t Key, uint8_t state)
         bool autoScan = gWasFKeyPressed || (state == BUTTON_EVENT_HELD);
 
         gBeepToPlay           = BEEP_1KHZ_60MS_OPTIONAL;
-        gWasFKeyPressed       = false;
-        gUpdateStatus         = true;
+        HideFKeyIcon();
         gRequestDisplayScreen = DISPLAY_FM;
 
         switch (Key) {

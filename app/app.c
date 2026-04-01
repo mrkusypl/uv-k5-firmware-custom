@@ -1407,8 +1407,7 @@ void APP_TimeSlice10ms(void)
                 if (gAlarmState == ALARM_STATE_TXALARM) {
                     gAlarmState = ALARM_STATE_SITE_ALARM;
 
-                    if(gEeprom.TAIL_TONE_ELIMINATION)
-                        RADIO_SendCssTail();
+                    RADIO_SendCssTail();
                     BK4819_SetupPowerAmplifier(0, 0);
                     BK4819_ToggleGpioOut(BK4819_GPIO1_PIN29_PA_ENABLE, false);
                     BK4819_Enable_AfDac_DiscMode_TxDsp();
@@ -1479,10 +1478,10 @@ void cancelUserInputModes(void)
 
     if (gWasFKeyPressed || gKeyInputCountdown > 0 || gInputBoxIndex > 0)
     {
-        gWasFKeyPressed     = false;
+        HideFKeyIcon();
+
         gInputBoxIndex      = 0;
         gKeyInputCountdown  = 0;
-        gUpdateStatus       = true;
         gUpdateDisplay      = true;
     }
 }
@@ -1698,13 +1697,12 @@ void APP_TimeSlice500ms(void)
 */
             DTMF_clear_input_box();
 
-            gWasFKeyPressed  = false;
+            HideFKeyIcon();
             gInputBoxIndex   = 0;
 
             gAskToSave       = false;
             gAskToDelete     = false;
 
-            gUpdateStatus    = true;
             gUpdateDisplay   = true;
 
             GUI_DisplayType_t disp = DISPLAY_INVALID;
@@ -1996,8 +1994,7 @@ static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
     if (gWasFKeyPressed && (Key == KEY_PTT || Key == KEY_EXIT || Key == KEY_SIDE1 || Key == KEY_SIDE2)) { 
 #endif
         // cancel the F-key
-        gWasFKeyPressed = false;
-        gUpdateStatus   = true;
+        HideFKeyIcon();
     }
 
     if (bFlag) {

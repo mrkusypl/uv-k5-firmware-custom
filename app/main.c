@@ -52,6 +52,26 @@ static VFO_Info_t gVfoBackup;
 static uint16_t   gScreenChannelBackup = 0;
 static uint16_t   gFreqChannelBackup = 0;
 
+static void VFO_RestoreBackup(void) {
+    if (gHasVfoBackup) {
+        const uint8_t Vfo = gEeprom.TX_VFO;
+
+        // Restore indices
+        gEeprom.ScreenChannel[Vfo] = gScreenChannelBackup;
+        gEeprom.FreqChannel[Vfo] = gFreqChannelBackup;
+
+        // Restore full VFO
+        memcpy(gTxVfo, &gVfoBackup, sizeof(VFO_Info_t));
+
+        // Save and apply
+        SETTINGS_SaveVfoIndices();
+        RADIO_ConfigureSquelchAndOutputPower(gTxVfo);
+        RADIO_SetupRegisters(true);
+
+        gHasVfoBackup = false;
+    }
+}
+
 static void toggle_chan_scanlist(void)
 {   // toggle the selected channels scanlist setting
 
@@ -95,8 +115,7 @@ static void processFKeyFunction(const KEY_Code_t Key, const bool beep)
 
 #ifdef ENABLE_FEAT_F4HWN_RESCUE_OPS
     if(gEeprom.MENU_LOCK == true && Key != 2) {
-        gUpdateStatus   = true;
-        gWasFKeyPressed = false;
+        HideFKeyIcon();
 
         return;
     }
@@ -116,8 +135,7 @@ static void processFKeyFunction(const KEY_Code_t Key, const bool beep)
 
         case KEY_1:
             if (!IS_FREQ_CHANNEL(gTxVfo->CHANNEL_SAVE)) {
-                gWasFKeyPressed = false;
-                gUpdateStatus   = true;
+                HideFKeyIcon();
 
 #ifdef ENABLE_COPY_CHAN_TO_VFO
                 if (!gEeprom.VFO_OPEN || gCssBackgroundScan) {
@@ -199,11 +217,10 @@ static void processFKeyFunction(const KEY_Code_t Key, const bool beep)
             break;
 
         case KEY_4:
-            gWasFKeyPressed          = false;
+            HideFKeyIcon();
 
             gBackup_CROSS_BAND_RX_TX  = gEeprom.CROSS_BAND_RX_TX;
-            gEeprom.CROSS_BAND_RX_TX = CROSS_BAND_OFF;
-            gUpdateStatus            = true;        
+            gEeprom.CROSS_BAND_RX_TX = CROSS_BAND_OFF;      
 
             SCANNER_Start(false);
             gRequestDisplayScreen = DISPLAY_SCANNER;
@@ -307,8 +324,7 @@ static void processFKeyFunction(const KEY_Code_t Key, const bool beep)
 #endif
 
         default:
-            gUpdateStatus   = true;
-            gWasFKeyPressed = false;
+            HideFKeyIcon();
 
             if (beep)
                 gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
@@ -398,8 +414,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
                     gRequestDisplayScreen = DISPLAY_MAIN;
                 }
 
-                gWasFKeyPressed = false;
-                gUpdateStatus   = true;
+                HideFKeyIcon();
 
                 processFKeyFunction(Key, true);
             }
@@ -573,8 +588,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
         return;
     }
 
-    gWasFKeyPressed = false;
-    gUpdateStatus   = true;
+    HideFKeyIcon();
 
     #ifdef ENABLE_FEAT_F4HWN_RESCUE_OPS
         if(gEeprom.MENU_LOCK == true && Key != 2) {
@@ -612,29 +626,10 @@ static void MAIN_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
 
     if (bKeyHeld) { // exit key held down
         if (bKeyPressed) {
-            if (gInputBoxIndex > 0 || gDTMF_InputBox_Index > 0 || gDTMF_InputMode)
-            {
-                // Restore full VFO state on long press EXIT
-                if (gHasVfoBackup) {
-                    const uint8_t Vfo = gEeprom.TX_VFO;
+            // Restore full VFO state on long press EXIT
+            VFO_RestoreBackup();
 
-                    // Restore indices
-                    gEeprom.ScreenChannel[Vfo] = gScreenChannelBackup;
-                    gEeprom.FreqChannel[Vfo] = gFreqChannelBackup;
-
-                    // Restore full VFO
-                    memcpy(gTxVfo, &gVfoBackup, sizeof(VFO_Info_t));
-
-                    // Save and apply
-                    SETTINGS_SaveVfoIndices();
-                    RADIO_ConfigureSquelchAndOutputPower(gTxVfo);
-                    RADIO_SetupRegisters(true);
-
-                    gHasVfoBackup = false;
-                }
-
-                gRequestDisplayScreen = DISPLAY_MAIN;
-            }
+            gRequestDisplayScreen = DISPLAY_MAIN;
         }
 
         return;
@@ -659,23 +654,8 @@ static void MAIN_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
             gInputBox[--gInputBoxIndex] = 10;
 
             // Restore full VFO state when back to 0
-            if (gInputBoxIndex == 0 && gHasVfoBackup) {
-                const uint8_t Vfo = gEeprom.TX_VFO;
-
-                // Restore indices
-                gEeprom.ScreenChannel[Vfo] = gScreenChannelBackup;
-                gEeprom.FreqChannel[Vfo] = gFreqChannelBackup;
-
-                // Restore full VFO
-                memcpy(gTxVfo, &gVfoBackup, sizeof(VFO_Info_t));
-
-                // Save and apply
-                SETTINGS_SaveVfoIndices();
-                RADIO_ConfigureSquelchAndOutputPower(gTxVfo);
-                RADIO_SetupRegisters(true);
-
-                gHasVfoBackup = false;
-            }
+            if (gInputBoxIndex == 0)
+                VFO_RestoreBackup();
 
             gKeyInputCountdown = key_input_timeout_500ms;
             channelMoveSwitch();
@@ -765,8 +745,7 @@ static void MAIN_Key_MENU(bool bKeyPressed, bool bKeyHeld)
 
             #ifdef ENABLE_FEAT_F4HWN_RESCUE_OPS
                 if(gEeprom.MENU_LOCK == true) {
-                    gUpdateStatus   = true;
-                    gWasFKeyPressed = false;
+                    HideFKeyIcon();
 
                     return;
                 }
@@ -802,8 +781,7 @@ static void MAIN_Key_STAR(bool bKeyPressed, bool bKeyHeld)
 
     #ifdef ENABLE_FEAT_F4HWN_RESCUE_OPS
         if(gEeprom.MENU_LOCK == true) {
-            gUpdateStatus   = true;
-            gWasFKeyPressed = false;
+            HideFKeyIcon();
 
             return; // prevent F function if MENU LOCK is true
         }
